@@ -196,3 +196,20 @@ class TipoEspacioOut(BaseModel):
     nombre_tipo_espacio: str
     class Config:
         from_attributes = True
+
+class TipoEquipamientoOut(BaseModel):
+    id_tipo_equipamiento:     int
+    nombre_tipo_equipamiento: str
+    class Config:
+        from_attributes = True
+ 
+class EspacioEquipamientoOut(BaseModel):
+    id_espacio_equipamiento:  int
+    id_tipo_equipamiento:     int
+    nombre_tipo_equipamiento: str
+    class Config:
+        from_attributes = True
+ 
+class EquipamientoAsignarRequest(BaseModel):
+    id_tipo_equipamiento: int
+ 
