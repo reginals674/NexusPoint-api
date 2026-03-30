@@ -6,6 +6,32 @@ from app import models, schemas
 router = APIRouter(tags=["Espacios"])
 
 # ─────────────────────────────────────────
+# CATÁLOGOS (PRIMERO)
+# ─────────────────────────────────────────
+
+@router.get("/catalogos/tipos", response_model=list[schemas.TipoEspacioOut])
+def listar_tipos_espacio(db: Session = Depends(get_db)):
+    return db.query(models.TipoEspacio).all()
+
+
+@router.get("/catalogos/edificios", response_model=list[schemas.EdificioOut])
+def listar_edificios(db: Session = Depends(get_db)):
+    return db.query(models.Edificio).all()
+
+
+@router.get("/catalogos/pisos/{id_edificio}", response_model=list[schemas.PisoOut])
+def listar_pisos(id_edificio: int, db: Session = Depends(get_db)):
+    return db.query(models.Piso).filter(
+        models.Piso.id_edificio == id_edificio
+    ).all()
+
+
+@router.get("/catalogos/equipamiento", response_model=list[schemas.TipoEquipamientoOut])
+def listar_tipos_equipamiento(db: Session = Depends(get_db)):
+    return db.query(models.TipoEquipamiento).all()
+
+
+# ─────────────────────────────────────────
 # LISTAR TODOS
 # ─────────────────────────────────────────
 
@@ -45,8 +71,10 @@ def obtener_espacio(id_espacio: int, db: Session = Depends(get_db)):
     espacio = db.query(models.Espacio).filter(
         models.Espacio.id_espacio == id_espacio
     ).first()
+
     if not espacio:
         raise HTTPException(status_code=404, detail="Espacio no encontrado")
+
     return espacio
 
 
@@ -56,11 +84,16 @@ def obtener_espacio(id_espacio: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.EspacioOut, status_code=201)
 def crear_espacio(datos: schemas.EspacioCreate, db: Session = Depends(get_db)):
+
     existe = db.query(models.Espacio).filter(
         models.Espacio.codigo_espacio == datos.codigo_espacio
     ).first()
+
     if existe:
-        raise HTTPException(status_code=400, detail="Ya existe un espacio con ese código")
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un espacio con ese código"
+        )
 
     nuevo = models.Espacio(
         codigo_espacio      = datos.codigo_espacio,
@@ -71,9 +104,11 @@ def crear_espacio(datos: schemas.EspacioCreate, db: Session = Depends(get_db)):
         id_estado_espacio   = datos.id_estado_espacio,
         id_piso             = datos.id_piso,
     )
+
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
     return nuevo
 
 
@@ -87,9 +122,11 @@ def actualizar_espacio(
     datos: schemas.EspacioUpdate,
     db: Session = Depends(get_db)
 ):
+
     espacio = db.query(models.Espacio).filter(
         models.Espacio.id_espacio == id_espacio
     ).first()
+
     if not espacio:
         raise HTTPException(status_code=404, detail="Espacio no encontrado")
 
@@ -98,6 +135,7 @@ def actualizar_espacio(
 
     db.commit()
     db.refresh(espacio)
+
     return espacio
 
 
@@ -107,9 +145,11 @@ def actualizar_espacio(
 
 @router.delete("/{id_espacio}", status_code=204)
 def eliminar_espacio(id_espacio: int, db: Session = Depends(get_db)):
+
     espacio = db.query(models.Espacio).filter(
         models.Espacio.id_espacio == id_espacio
     ).first()
+
     if not espacio:
         raise HTTPException(status_code=404, detail="Espacio no encontrado")
 
@@ -118,79 +158,72 @@ def eliminar_espacio(id_espacio: int, db: Session = Depends(get_db)):
 
 
 # ─────────────────────────────────────────
-# CATÁLOGOS RELACIONADOS
+# EQUIPAMIENTO DE ESPACIOS
 # ─────────────────────────────────────────
 
-@router.get("/catalogos/tipos", response_model=list[schemas.TipoEspacioOut])
-def listar_tipos_espacio(db: Session = Depends(get_db)):
-    return db.query(models.TipoEspacio).all()
-
-
-@router.get("/catalogos/edificios", response_model=list[schemas.EdificioOut])
-def listar_edificios(db: Session = Depends(get_db)):
-    return db.query(models.Edificio).all()
-
-
-@router.get("/catalogos/pisos/{id_edificio}", response_model=list[schemas.PisoOut])
-def listar_pisos(id_edificio: int, db: Session = Depends(get_db)):
-    return db.query(models.Piso).filter(
-        models.Piso.id_edificio == id_edificio
-    ).all()
-
-router.get("/catalogos/equipamiento", response_model=list[schemas.TipoEquipamientoOut])
-def listar_tipos_equipamiento(db: Session = Depends(get_db)):
-    return db.query(models.TipoEquipamiento).all()
- 
- 
-# ── Equipamiento asignado a un espacio ──
 @router.get("/{id_espacio}/equipamiento", response_model=list[schemas.EspacioEquipamientoOut])
 def listar_equipamiento_espacio(id_espacio: int, db: Session = Depends(get_db)):
+
     rows = db.query(models.EspacioEquipamiento).filter(
         models.EspacioEquipamiento.id_espacio == id_espacio
     ).all()
+
     result = []
+
     for row in rows:
         result.append({
             "id_espacio_equipamiento": row.id_espacio_equipamiento,
-            "id_tipo_equipamiento":    row.id_tipo_equipamiento,
+            "id_tipo_equipamiento": row.id_tipo_equipamiento,
             "nombre_tipo_equipamiento": row.tipo_equipamiento.nombre_tipo_equipamiento
         })
+
     return result
- 
- 
-# ── Agregar equipamiento a un espacio ──
+
+
 @router.post("/{id_espacio}/equipamiento", status_code=201)
-def agregar_equipamiento(id_espacio: int, datos: schemas.EquipamientoAsignarRequest, db: Session = Depends(get_db)):
-    # Verificar que no exista ya
+def agregar_equipamiento(
+    id_espacio: int,
+    datos: schemas.EquipamientoAsignarRequest,
+    db: Session = Depends(get_db)
+):
+
     existe = db.query(models.EspacioEquipamiento).filter(
         models.EspacioEquipamiento.id_espacio == id_espacio,
         models.EspacioEquipamiento.id_tipo_equipamiento == datos.id_tipo_equipamiento
     ).first()
+
     if existe:
-        raise HTTPException(status_code=400, detail="Este equipamiento ya está asignado al espacio")
- 
+        raise HTTPException(
+            status_code=400,
+            detail="Este equipamiento ya está asignado al espacio"
+        )
+
     nuevo = models.EspacioEquipamiento(
-        id_espacio           = id_espacio,
-        id_tipo_equipamiento = datos.id_tipo_equipamiento
+        id_espacio=id_espacio,
+        id_tipo_equipamiento=datos.id_tipo_equipamiento
     )
+
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
     return {
         "id_espacio_equipamiento": nuevo.id_espacio_equipamiento,
-        "id_tipo_equipamiento":    nuevo.id_tipo_equipamiento,
+        "id_tipo_equipamiento": nuevo.id_tipo_equipamiento,
         "nombre_tipo_equipamiento": nuevo.tipo_equipamiento.nombre_tipo_equipamiento
     }
- 
- 
-# ── Eliminar equipamiento de un espacio ──
+
+
 @router.delete("/{id_espacio}/equipamiento/{id_equip}", status_code=204)
 def eliminar_equipamiento(id_espacio: int, id_equip: int, db: Session = Depends(get_db)):
+
     row = db.query(models.EspacioEquipamiento).filter(
         models.EspacioEquipamiento.id_espacio_equipamiento == id_equip,
         models.EspacioEquipamiento.id_espacio == id_espacio
     ).first()
+
     if not row:
         raise HTTPException(status_code=404, detail="Equipamiento no encontrado")
+
     db.delete(row)
     db.commit()
