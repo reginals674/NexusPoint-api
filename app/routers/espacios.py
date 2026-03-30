@@ -162,6 +162,20 @@ def eliminar_espacio(id_espacio: int, db: Session = Depends(get_db)):
 # EQUIPAMIENTO DE ESPACIOS
 # ─────────────────────────────────────────
 
+@router.get("/admin/fix-secuencia")
+def fix_secuencia(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("""
+            SELECT setval(
+                pg_get_serial_sequence('espacioequipamiento', 'id_espacio_equipamiento'),
+                (SELECT MAX(id_espacio_equipamiento) FROM espacioequipamiento)
+            )
+        """))
+        db.commit()
+        return {"ok": True, "mensaje": "Secuencia corregida"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 @router.get("/{id_espacio}/equipamiento", response_model=list[schemas.EspacioEquipamientoOut])
 def listar_equipamiento_espacio(id_espacio: int, db: Session = Depends(get_db)):
 
@@ -180,19 +194,7 @@ def listar_equipamiento_espacio(id_espacio: int, db: Session = Depends(get_db)):
 
     return result
 
-@router.get("/fix-secuencia")
-def fix_secuencia(db: Session = Depends(get_db)):
-    try:
-        db.execute(text("""
-            SELECT setval(
-                pg_get_serial_sequence('espacioequipamiento', 'id_espacio_equipamiento'),
-                (SELECT MAX(id_espacio_equipamiento) FROM espacioequipamiento)
-            )
-        """))
-        db.commit()
-        return {"ok": True, "mensaje": "Secuencia corregida"}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+
 
 
 @router.post("/{id_espacio}/equipamiento", status_code=201)
