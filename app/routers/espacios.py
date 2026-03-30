@@ -144,6 +144,20 @@ def actualizar_espacio(
 # ELIMINAR
 # ─────────────────────────────────────────
 
+@router.get("/admin/fix-secuencia-espacios")
+def fix_secuencia_espacios(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("""
+            SELECT setval(
+                pg_get_serial_sequence('espacio', 'id_espacio'),
+                (SELECT MAX(id_espacio) FROM espacio)
+            )
+        """))
+        db.commit()
+        return {"ok": True, "mensaje": "Secuencia de espacios corregida"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 @router.delete("/{id_espacio}", status_code=204)
 def eliminar_espacio(id_espacio: int, db: Session = Depends(get_db)):
 
@@ -193,9 +207,6 @@ def listar_equipamiento_espacio(id_espacio: int, db: Session = Depends(get_db)):
         })
 
     return result
-
-
-
 
 @router.post("/{id_espacio}/equipamiento", status_code=201)
 def agregar_equipamiento(
