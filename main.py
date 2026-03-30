@@ -9,10 +9,14 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="NexusPoint API",
     description="API REST para el sistema de reserva de espacios universitarios",
-    version="1.0.0"
+    
 )
+origins = [
+    "http://localhost:8081",
+    "http://localhost:19006",
+    
+]
 
-# CORS — permite conexiones desde la app móvil y Laravel
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
