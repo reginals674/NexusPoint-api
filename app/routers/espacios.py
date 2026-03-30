@@ -121,7 +121,7 @@ def eliminar_espacio(id_espacio: int, db: Session = Depends(get_db)):
 # CATÁLOGOS RELACIONADOS
 # ─────────────────────────────────────────
 
-@router.get("/catalogos/tipos", response_model=list[schemas.EspacioOut])
+@router.get("/catalogos/tipos", response_model=list[schemas.TipoEspacioOut])
 def listar_tipos_espacio(db: Session = Depends(get_db)):
     return db.query(models.TipoEspacio).all()
 
