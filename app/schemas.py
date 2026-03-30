@@ -190,3 +190,9 @@ class NotificacionOut(BaseModel):
 
 class MarcarLeidaRequest(BaseModel):
     id_notificacion: int
+
+class TipoEspacioOut(BaseModel):
+    id_tipo_espacio:     int
+    nombre_tipo_espacio: str
+    class Config:
+        from_attributes = True
