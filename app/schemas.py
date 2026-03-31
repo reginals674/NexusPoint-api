@@ -159,6 +159,7 @@ class ReservacionOut(BaseModel):
 
 class GestionCreate(BaseModel):
     id_reservacion:        int
+    id_usuario_gestor:     int
     id_estado_reservacion: int
     observaciones:         Optional[str] = None
 
