@@ -50,6 +50,62 @@ def reservaciones_por_estado(id_estado: int, db: Session = Depends(get_db)):
 
 
 # ─────────────────────────────────────────
+# GESTIONAR (aprobar / rechazar — encargado)
+# ─────────────────────────────────────────
+
+@router.post("/gestionar", response_model=schemas.GestionOut, status_code=201)
+def gestionar_reservacion(
+    datos: schemas.GestionCreate,
+    db: Session = Depends(get_db)
+):
+    reservacion = db.query(models.Reservacion).filter(
+        models.Reservacion.id_reservacion == datos.id_reservacion
+    ).first()
+    if not reservacion:
+        raise HTTPException(status_code=404, detail="Reservación no encontrada")
+
+    # Registrar la gestión
+    gestion = models.Gestion(
+        id_reservacion        = datos.id_reservacion,
+        id_usuario_gestor     = datos.id_usuario_gestor,
+        id_estado_reservacion = datos.id_estado_reservacion,
+        observaciones         = datos.observaciones,
+    )
+    db.add(gestion)
+
+    # Actualizar estado de la reservación
+    reservacion.id_estado_reservacion = datos.id_estado_reservacion
+
+    # Si fue rechazada o cancelada liberar el espacio
+    if datos.id_estado_reservacion in [3, 4]:
+        espacio = db.query(models.Espacio).filter(
+            models.Espacio.id_espacio == reservacion.id_espacio
+        ).first()
+        if espacio:
+            espacio.id_estado_espacio = 1  # Disponible
+
+    db.commit()
+    db.refresh(gestion)
+
+    # Notificación al usuario solicitante
+    tipo_notif = 1 if datos.id_estado_reservacion == 2 else 2  # Aprobacion o Rechazo
+    titulo     = "Reservación aprobada" if datos.id_estado_reservacion == 2 else "Reservación rechazada"
+    cuerpo     = datos.observaciones or titulo
+
+    notif = models.Notificacion(
+        id_usuario_destino   = reservacion.id_usuario,
+        id_reservacion       = datos.id_reservacion,
+        id_tipo_notificacion = tipo_notif,
+        titulo_notificacion  = titulo,
+        cuerpo_notificacion  = cuerpo,
+        leida                = 0,
+    )
+    db.add(notif)
+    db.commit()
+
+    return gestion
+
+# ─────────────────────────────────────────
 # OBTENER UNA
 # ─────────────────────────────────────────
 
@@ -180,59 +236,3 @@ def cancelar_reservacion(id_reservacion: int, db: Session = Depends(get_db)):
 
     return reservacion
 
-
-# ─────────────────────────────────────────
-# GESTIONAR (aprobar / rechazar — encargado)
-# ─────────────────────────────────────────
-
-@router.post("/gestionar", response_model=schemas.GestionOut, status_code=201)
-def gestionar_reservacion(
-    datos: schemas.GestionCreate,
-    db: Session = Depends(get_db)
-):
-    reservacion = db.query(models.Reservacion).filter(
-        models.Reservacion.id_reservacion == datos.id_reservacion
-    ).first()
-    if not reservacion:
-        raise HTTPException(status_code=404, detail="Reservación no encontrada")
-
-    # Registrar la gestión
-    gestion = models.Gestion(
-        id_reservacion        = datos.id_reservacion,
-        id_usuario_gestor     = datos.id_reservacion,  # se actualiza abajo
-        id_estado_reservacion = datos.id_estado_reservacion,
-        observaciones         = datos.observaciones,
-    )
-    db.add(gestion)
-
-    # Actualizar estado de la reservación
-    reservacion.id_estado_reservacion = datos.id_estado_reservacion
-
-    # Si fue rechazada o cancelada liberar el espacio
-    if datos.id_estado_reservacion in [3, 4]:
-        espacio = db.query(models.Espacio).filter(
-            models.Espacio.id_espacio == reservacion.id_espacio
-        ).first()
-        if espacio:
-            espacio.id_estado_espacio = 1  # Disponible
-
-    db.commit()
-    db.refresh(gestion)
-
-    # Notificación al usuario solicitante
-    tipo_notif = 1 if datos.id_estado_reservacion == 2 else 2  # Aprobacion o Rechazo
-    titulo     = "Reservación aprobada" if datos.id_estado_reservacion == 2 else "Reservación rechazada"
-    cuerpo     = datos.observaciones or titulo
-
-    notif = models.Notificacion(
-        id_usuario_destino   = reservacion.id_usuario,
-        id_reservacion       = datos.id_reservacion,
-        id_tipo_notificacion = tipo_notif,
-        titulo_notificacion  = titulo,
-        cuerpo_notificacion  = cuerpo,
-        leida                = 0,
-    )
-    db.add(notif)
-    db.commit()
-
-    return gestion
